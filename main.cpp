@@ -1,13 +1,20 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <chrono>
 #include "DecisionNode.h"
 #include "TreeManager.h"
 #include "AuthManager.h"
+#include "InventoryManager.h"
+#include "Book.h"
+#include "TransactionManager.h"
+#include "InputValidator.h"
 
 int main()
 {
     AuthManager auth("accounts.txt");
+    InventoryManager inventory("books.txt");
+    TransactionManager transactions("transactions.txt", inventory);
     bool appRunning = true;
 
     while (appRunning)
@@ -86,33 +93,155 @@ int main()
         DecisionNode *libraryRoot = root.get();
 
         // ==========================================
+        // SHARED LAMBDAS
+        // ==========================================
+        auto searchCatalogAction = [&inventory]()
+        {
+            std::cout << "\n>>> [USE CASE 2] Book Catalog Search\n";
+            std::cout << "Enter a title to search for (or type '*' to list all books): ";
+            std::string query;
+            std::cin >> std::ws; // Clear whitespace buffer
+            std::getline(std::cin, query);
+
+            std::vector<Book *> results;
+
+            // If the user types the wildcard, grab everything
+            if (query == "*")
+            {
+                results = inventory.getAllBooks();
+            }
+            else
+            {
+                results = inventory.searchByTitle(query);
+            }
+
+            std::cout << "\n--- Search Results ---\n";
+            if (results.empty())
+            {
+                std::cout << "[!] No books found.\n";
+            }
+            else
+            {
+                for (const auto *book : results)
+                {
+                    book->displayInfo();
+                }
+            }
+            std::cout << "----------------------\n";
+        };
+
+        // ==========================================
         // TUI TREE SETUP (Filtered by Role)
         // ==========================================
         if (activeUser.role == READER)
         {
             DecisionNode *readerMenu = libraryRoot->addChild("Reader Portal", "Enter as Reader");
 
-            readerMenu->addChild("Search Books", "Search & Filter Books", []()
-                                 { std::cout << "\n>>> [USE CASE 2] Opening Book Catalog Search...\n"; });
-            readerMenu->addChild("Borrow Book", "Borrow a Book (Physical/Digital)", []()
-                                 { std::cout << "\n>>> [USE CASE 3] Checking availability and updating history...\n"; });
-            readerMenu->addChild("Return Book", "Return a Borrowed Book", []()
-                                 { std::cout << "\n>>> [USE CASE 4] Processing return...\n"; });
-            readerMenu->addChild("Reserve Book", "Reserve Unavailable Book", []()
-                                 { std::cout << "\n>>> [USE CASE 5] Book placed on hold...\n"; });
+            readerMenu->addChild("Search Books", "Search & Filter Books", searchCatalogAction);
+
+            readerMenu->addChild("Borrow Book", "Borrow a Book", [&transactions, &activeUser]()
+                                 {
+                std::cout << "\n>>> [USE CASE 3] Borrow a Book\n";
+                std::cout << "Enter the Book ID you wish to borrow: ";
+                std::string bId; std::cin >> bId;
+                
+                if (transactions.borrowBook(activeUser.username, bId)) {
+                    std::cout << ">>> Success! Enjoy your book.\n";
+                } else {
+                    std::cout << "[!] Error: Book is either unavailable or does not exist.\n";
+                } });
+
+            readerMenu->addChild("Return Book", "Return a Borrowed Book", [&transactions, &activeUser]()
+                                 {
+                std::cout << "\n>>> [USE CASE 4] Return a Book\n";
+                std::cout << "Enter the Book ID you wish to return: ";
+                std::string bId; std::cin >> bId;
+                
+                if (transactions.returnBook(activeUser.username, bId)) {
+                    std::cout << ">>> Success! The book has been returned.\n";
+                } else {
+                    std::cout << "[!] Error: You do not currently have this book checked out.\n";
+                } });
+
+            readerMenu->addChild("Reserve Book", "Reserve Unavailable Book", [&transactions, &activeUser]()
+                                 {
+                std::cout << "\n>>> [USE CASE 5] Reserve a Book\n";
+                std::cout << "Enter the Book ID you wish to reserve: ";
+                std::string bId; std::cin >> bId;
+
+                if (transactions.reserveBook(activeUser.username, bId)) {
+                    std::cout << ">>> Success! You have been added to the reservation queue.\n";
+                } else {
+                    std::cout << "[!] Error: Book does not exist or is currently available to borrow right now.\n";
+                } });
         }
         else if (activeUser.role == LIBRARIAN)
         {
             DecisionNode *librarianMenu = libraryRoot->addChild("Librarian Portal", "Enter as Librarian");
 
-            librarianMenu->addChild("Search Books", "Catalog Search", []()
-                                    { std::cout << "\n>>> [USE CASE 2] Opening Book Catalog Search...\n"; });
-            librarianMenu->addChild("Calculate Penalties", "Calculate Overdue Penalties", []()
-                                    { std::cout << "\n>>> [USE CASE 6] Scanning database for overdue books...\n"; });
-            librarianMenu->addChild("Add Book", "Add New Book to Inventory", []()
-                                    { std::cout << "\n>>> [USE CASE 7] Enter book metadata... Item added.\n"; });
-            librarianMenu->addChild("Remove Book", "Remove Book from Inventory", []()
-                                    { std::cout << "\n>>> [USE CASE 8] Removing damaged asset...\n"; });
+            librarianMenu->addChild("Search Books", "Catalog Search", searchCatalogAction);
+            librarianMenu->addChild("Calculate Penalties", "Calculate Overdue Penalties", [&transactions]()
+                                    { 
+                std::cout << "\n>>> [USE CASE 6] Scanning database for overdue books...\n";
+                
+                double dailyRate = 2.50; // Set the fine to $2.50 per day
+                auto report = transactions.calculateOverduePenalties(dailyRate);
+
+                if (report.empty()) {
+                    std::cout << ">>> All clear! No overdue books found.\n";
+                } else {
+                    std::cout << "--- OVERDUE PENALTY REPORT ---\n";
+                    for (const auto& record : report) {
+                        std::cout << "[User: " << record.username 
+                                  << "] Book ID: " << record.bookId 
+                                  << " | Days Overdue: " << record.daysOverdue 
+                                  << " | Fine: $" << record.penaltyAmount << "\n";
+                    }
+                    std::cout << "------------------------------\n";
+                } });
+
+            // Add Book Logic
+            librarianMenu->addChild("Add Book", "Add New Book to Inventory", [&inventory]()
+                                    { 
+                std::cout << "\n>>> [USE CASE 7] Add New Asset\n";
+                
+                std::string title = InputValidator::getString("Title: ");
+                std::string author = InputValidator::getString("Author: ");
+                std::string category = InputValidator::getString("Category: ");
+                std::string isDigital = InputValidator::getString("Is this a digital format? (y/n): ");
+
+                // Generate a unique ID using modern C++ chrono
+                auto now = std::chrono::system_clock::now().time_since_epoch();
+                long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(now).count();
+                std::string id = "B" + std::to_string(timestamp);
+
+                if (isDigital == "y" || isDigital == "Y") {
+                    std::string format;
+                    std::cout << "File Format (e.g., PDF, EPUB): "; std::cin >> format;
+                    double size = InputValidator::getDouble("File Size (MB): ");
+                    
+                    inventory.addBook(std::make_unique<DigitalBook>(id, title, author, category, true, format, size));
+                } else {
+                    std::string shelf;
+                    std::cout << "Shelf Location (e.g., A1, B2): "; std::cin >> std::ws; std::getline(std::cin, shelf);
+                    
+                    inventory.addBook(std::make_unique<PhysicalBook>(id, title, author, category, true, shelf));
+                }
+                std::cout << ">>> Asset added successfully! Unique ID: " << id << "\n"; });
+
+            // Remove Book Logic
+            librarianMenu->addChild("Remove Book", "Remove Book from Inventory", [&inventory]()
+                                    { 
+                std::cout << "\n>>> [USE CASE 8] Remove Asset\n";
+                std::cout << "Enter the Book ID to remove: ";
+                std::string id;
+                std::cin >> id;
+                
+                if (inventory.removeBook(id)) {
+                    std::cout << ">>> Asset " << id << " successfully removed.\n";
+                } else {
+                    std::cout << "[!] Error: Book ID not found.\n";
+                } });
         }
         else if (activeUser.role == ADMIN)
         {
@@ -133,6 +262,8 @@ int main()
                                     } else {
                                         std::cout << ">>> [!] Username already exists.\n";
                                     } });
+
+            // Note: In the future, you could easily point these admin placeholders to the inventory manager too!
             adminMenu->addChild("Inventory Audit - Add", "Direct Add Asset", []()
                                 { std::cout << "\n>>> [USE CASE 7] Administrative inventory bypass: Adding asset...\n"; });
             adminMenu->addChild("Inventory Audit - Remove", "Direct Remove Asset", []()
