@@ -2,6 +2,23 @@
 #include "DataManager.h"
 #include <sstream>
 #include <iostream>
+#include <algorithm>
+#include <cctype>
+
+namespace
+{
+    std::string toLower(std::string value)
+    {
+        std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
+                       { return static_cast<char>(std::tolower(c)); });
+        return value;
+    }
+
+    bool containsCaseInsensitive(const std::string &text, const std::string &query)
+    {
+        return toLower(text).find(toLower(query)) != std::string::npos;
+    }
+}
 
 InventoryManager::InventoryManager(const std::string &filepath) : _inventoryFile(filepath)
 {
@@ -77,6 +94,26 @@ bool InventoryManager::removeBook(const std::string &bookId)
     return false;
 }
 
+bool InventoryManager::updateBook(const std::string &bookId,
+                                  const std::string &newTitle,
+                                  const std::string &newAuthor,
+                                  const std::string &newCategory,
+                                  bool newAvailability)
+{
+    Book *book = getBookById(bookId);
+    if (book == nullptr)
+    {
+        return false;
+    }
+
+    book->setTitle(newTitle);
+    book->setAuthor(newAuthor);
+    book->setCategory(newCategory);
+    book->setAvailable(newAvailability);
+    saveInventory();
+    return true;
+}
+
 Book *InventoryManager::getBookById(const std::string &bookId) const
 {
     auto it = _inventory.find(bookId);
@@ -93,8 +130,33 @@ std::vector<Book *> InventoryManager::searchByTitle(const std::string &titleQuer
     std::vector<Book *> results;
     for (const auto &pair : _inventory)
     {
-        // Simple substring search
-        if (pair.second->getTitle().find(titleQuery) != std::string::npos)
+        if (containsCaseInsensitive(pair.second->getTitle(), titleQuery))
+        {
+            results.push_back(pair.second.get());
+        }
+    }
+    return results;
+}
+
+std::vector<Book *> InventoryManager::filterByAuthor(const std::string &authorQuery) const
+{
+    std::vector<Book *> results;
+    for (const auto &pair : _inventory)
+    {
+        if (containsCaseInsensitive(pair.second->getAuthor(), authorQuery))
+        {
+            results.push_back(pair.second.get());
+        }
+    }
+    return results;
+}
+
+std::vector<Book *> InventoryManager::filterByCategory(const std::string &category) const
+{
+    std::vector<Book *> results;
+    for (const auto &pair : _inventory)
+    {
+        if (containsCaseInsensitive(pair.second->getCategory(), category))
         {
             results.push_back(pair.second.get());
         }

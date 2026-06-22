@@ -11,6 +11,9 @@ std::string Book::getTitle() const { return title; }
 std::string Book::getAuthor() const { return author; }
 std::string Book::getCategory() const { return category; }
 bool Book::getIsAvailable() const { return isAvailable; }
+void Book::setTitle(const std::string &newTitle) { title = newTitle; }
+void Book::setAuthor(const std::string &newAuthor) { author = newAuthor; }
+void Book::setCategory(const std::string &newCategory) { category = newCategory; }
 void Book::setAvailable(bool status) { isAvailable = status; }
 
 // --- Physical Book Implementation ---

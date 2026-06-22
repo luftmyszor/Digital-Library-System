@@ -114,3 +114,45 @@ bool TransactionManager::reserveBook(const std::string &username, const std::str
     saveTransactions();
     return true;
 }
+
+std::vector<TransactionManager::OverdueRecord> TransactionManager::calculateOverduePenalties(double dailyRate) const
+{
+    std::vector<OverdueRecord> report;
+    long long now = getCurrentTimestamp();
+    const long long secondsPerDay = 24 * 60 * 60;
+
+    for (const auto &t : _transactions)
+    {
+        if (t.status != TransStatus::BORROWED)
+            continue;
+
+        if (now <= t.dueDate)
+            continue;
+
+        long long overdueSeconds = now - t.dueDate;
+        int daysOverdue = static_cast<int>((overdueSeconds + secondsPerDay - 1) / secondsPerDay);
+
+        OverdueRecord record;
+        record.transactionId = t.transactionId;
+        record.username = t.username;
+        record.bookId = t.bookId;
+        record.daysOverdue = daysOverdue;
+        record.penaltyAmount = daysOverdue * dailyRate;
+        report.push_back(record);
+    }
+
+    return report;
+}
+
+std::vector<Transaction> TransactionManager::getUserHistory(const std::string &username) const
+{
+    std::vector<Transaction> history;
+    for (const auto &t : _transactions)
+    {
+        if (t.username == username)
+        {
+            history.push_back(t);
+        }
+    }
+    return history;
+}

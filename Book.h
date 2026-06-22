@@ -23,6 +23,9 @@ public:
     bool getIsAvailable() const;
 
     // Setters
+    void setTitle(const std::string &newTitle);
+    void setAuthor(const std::string &newAuthor);
+    void setCategory(const std::string &newCategory);
     void setAvailable(bool status);
 
     // Pure virtual functions for polymorphism
