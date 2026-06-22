@@ -22,6 +22,11 @@ public:
 
     // Use Case 8: Remove Book
     bool removeBook(const std::string &bookId);
+    bool updateBook(const std::string &bookId,
+                    const std::string &newTitle,
+                    const std::string &newAuthor,
+                    const std::string &newCategory,
+                    bool newAvailability);
 
     // Use Case 2: Search functionality (returning raw pointers for safe viewing without taking ownership)
     std::vector<Book *> searchByTitle(const std::string &titleQuery) const;

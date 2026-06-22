@@ -94,6 +94,26 @@ bool InventoryManager::removeBook(const std::string &bookId)
     return false;
 }
 
+bool InventoryManager::updateBook(const std::string &bookId,
+                                  const std::string &newTitle,
+                                  const std::string &newAuthor,
+                                  const std::string &newCategory,
+                                  bool newAvailability)
+{
+    Book *book = getBookById(bookId);
+    if (book == nullptr)
+    {
+        return false;
+    }
+
+    book->setTitle(newTitle);
+    book->setAuthor(newAuthor);
+    book->setCategory(newCategory);
+    book->setAvailable(newAvailability);
+    saveInventory();
+    return true;
+}
+
 Book *InventoryManager::getBookById(const std::string &bookId) const
 {
     auto it = _inventory.find(bookId);

@@ -161,6 +161,78 @@ int main()
             std::cout << "----------------------\n";
         };
 
+        auto addBookAction = [&inventory]()
+        {
+            std::cout << "\n>>> [USE CASE 7] Add New Asset\n";
+
+            std::string title = InputValidator::getString("Title: ");
+            std::string author = InputValidator::getString("Author: ");
+            std::string category = InputValidator::getString("Category: ");
+            std::string isDigital = InputValidator::getString("Is this a digital format? (y/n): ");
+
+            auto now = std::chrono::system_clock::now().time_since_epoch();
+            long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(now).count();
+            std::string id = "B" + std::to_string(timestamp);
+
+            if (isDigital == "y" || isDigital == "Y")
+            {
+                std::string format;
+                std::cout << "File Format (e.g., PDF, EPUB): ";
+                std::cin >> format;
+                double size = InputValidator::getDouble("File Size (MB): ");
+
+                inventory.addBook(std::make_unique<DigitalBook>(id, title, author, category, true, format, size));
+            }
+            else
+            {
+                std::string shelf;
+                std::cout << "Shelf Location (e.g., A1, B2): ";
+                std::cin >> std::ws;
+                std::getline(std::cin, shelf);
+
+                inventory.addBook(std::make_unique<PhysicalBook>(id, title, author, category, true, shelf));
+            }
+
+            std::cout << ">>> Asset added successfully! Unique ID: " << id << "\n";
+        };
+
+        auto updateBookAction = [&inventory]()
+        {
+            std::cout << "\n>>> Update Book Metadata\n";
+            std::string id = InputValidator::getString("Book ID: ");
+            std::string title = InputValidator::getString("New Title: ");
+            std::string author = InputValidator::getString("New Author: ");
+            std::string category = InputValidator::getString("New Category: ");
+            std::string available = InputValidator::getString("Available? (y/n): ");
+
+            bool isAvailable = (available == "y" || available == "Y");
+            if (inventory.updateBook(id, title, author, category, isAvailable))
+            {
+                std::cout << ">>> Book " << id << " updated successfully.\n";
+            }
+            else
+            {
+                std::cout << "[!] Error: Book ID not found.\n";
+            }
+        };
+
+        auto removeBookAction = [&inventory]()
+        {
+            std::cout << "\n>>> [USE CASE 8] Remove Asset\n";
+            std::cout << "Enter the Book ID to remove: ";
+            std::string id;
+            std::cin >> id;
+
+            if (inventory.removeBook(id))
+            {
+                std::cout << ">>> Asset " << id << " successfully removed.\n";
+            }
+            else
+            {
+                std::cout << "[!] Error: Book ID not found.\n";
+            }
+        };
+
         // ==========================================
         // TUI TREE SETUP (Filtered by Role)
         // ==========================================
@@ -256,48 +328,9 @@ int main()
                     std::cout << "------------------------------\n";
                 } });
 
-            // Add Book Logic
-            librarianMenu->addChild("Add Book", "Add New Book to Inventory", [&inventory]()
-                                    { 
-                std::cout << "\n>>> [USE CASE 7] Add New Asset\n";
-                
-                std::string title = InputValidator::getString("Title: ");
-                std::string author = InputValidator::getString("Author: ");
-                std::string category = InputValidator::getString("Category: ");
-                std::string isDigital = InputValidator::getString("Is this a digital format? (y/n): ");
-
-                // Generate a unique ID using modern C++ chrono
-                auto now = std::chrono::system_clock::now().time_since_epoch();
-                long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(now).count();
-                std::string id = "B" + std::to_string(timestamp);
-
-                if (isDigital == "y" || isDigital == "Y") {
-                    std::string format;
-                    std::cout << "File Format (e.g., PDF, EPUB): "; std::cin >> format;
-                    double size = InputValidator::getDouble("File Size (MB): ");
-                    
-                    inventory.addBook(std::make_unique<DigitalBook>(id, title, author, category, true, format, size));
-                } else {
-                    std::string shelf;
-                    std::cout << "Shelf Location (e.g., A1, B2): "; std::cin >> std::ws; std::getline(std::cin, shelf);
-                    
-                    inventory.addBook(std::make_unique<PhysicalBook>(id, title, author, category, true, shelf));
-                }
-                std::cout << ">>> Asset added successfully! Unique ID: " << id << "\n"; });
-
-            // Remove Book Logic
-            librarianMenu->addChild("Remove Book", "Remove Book from Inventory", [&inventory]()
-                                    { 
-                std::cout << "\n>>> [USE CASE 8] Remove Asset\n";
-                std::cout << "Enter the Book ID to remove: ";
-                std::string id;
-                std::cin >> id;
-                
-                if (inventory.removeBook(id)) {
-                    std::cout << ">>> Asset " << id << " successfully removed.\n";
-                } else {
-                    std::cout << "[!] Error: Book ID not found.\n";
-                } });
+            librarianMenu->addChild("Add Book", "Add New Book to Inventory", addBookAction);
+            librarianMenu->addChild("Update Book", "Update Book Metadata", updateBookAction);
+            librarianMenu->addChild("Remove Book", "Remove Book from Inventory", removeBookAction);
         }
         else if (activeUser.role == ADMIN)
         {
@@ -319,11 +352,10 @@ int main()
                                         std::cout << ">>> [!] Username already exists.\n";
                                     } });
 
-            // Note: In the future, you could easily point these admin placeholders to the inventory manager too!
-            adminMenu->addChild("Inventory Audit - Add", "Direct Add Asset", []()
-                                { std::cout << "\n>>> [USE CASE 7] Administrative inventory bypass: Adding asset...\n"; });
-            adminMenu->addChild("Inventory Audit - Remove", "Direct Remove Asset", []()
-                                { std::cout << "\n>>> [USE CASE 8] Administrative inventory bypass: Removing asset...\n"; });
+            adminMenu->addChild("Search Books", "Catalog Search", searchCatalogAction);
+            adminMenu->addChild("Add Book", "Direct Add Asset", addBookAction);
+            adminMenu->addChild("Update Book", "Direct Update Asset", updateBookAction);
+            adminMenu->addChild("Remove Book", "Direct Remove Asset", removeBookAction);
         }
 
         // ==========================================
