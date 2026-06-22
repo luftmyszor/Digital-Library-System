@@ -98,21 +98,52 @@ int main()
         auto searchCatalogAction = [&inventory]()
         {
             std::cout << "\n>>> [USE CASE 2] Book Catalog Search\n";
-            std::cout << "Enter a title to search for (or type '*' to list all books): ";
+            std::cout << "Search mode: [1] Title  [2] Author  [3] Category  [4] List All\n";
+            std::cout << "Select mode: ";
+            std::string mode;
+            std::cin >> mode;
+
+            if (mode == "4")
+            {
+                auto allBooks = inventory.getAllBooks();
+                std::cout << "\n--- Search Results ---\n";
+                if (allBooks.empty())
+                {
+                    std::cout << "[!] No books found.\n";
+                }
+                else
+                {
+                    for (const auto *book : allBooks)
+                    {
+                        book->displayInfo();
+                    }
+                }
+                std::cout << "----------------------\n";
+                return;
+            }
+
+            std::cout << "Enter search text: ";
             std::string query;
             std::cin >> std::ws; // Clear whitespace buffer
             std::getline(std::cin, query);
 
             std::vector<Book *> results;
-
-            // If the user types the wildcard, grab everything
-            if (query == "*")
+            if (mode == "1")
             {
-                results = inventory.getAllBooks();
+                results = inventory.searchByTitle(query);
+            }
+            else if (mode == "2")
+            {
+                results = inventory.filterByAuthor(query);
+            }
+            else if (mode == "3")
+            {
+                results = inventory.filterByCategory(query);
             }
             else
             {
-                results = inventory.searchByTitle(query);
+                std::cout << "[!] Invalid search mode.\n";
+                return;
             }
 
             std::cout << "\n--- Search Results ---\n";

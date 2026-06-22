@@ -25,6 +25,7 @@ public:
 
     // Use Case 2: Search functionality (returning raw pointers for safe viewing without taking ownership)
     std::vector<Book *> searchByTitle(const std::string &titleQuery) const;
+    std::vector<Book *> filterByAuthor(const std::string &authorQuery) const;
     std::vector<Book *> filterByCategory(const std::string &category) const;
     std::vector<Book *> getAllBooks() const;
 
