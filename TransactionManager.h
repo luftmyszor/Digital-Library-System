@@ -34,4 +34,5 @@ public:
     bool reserveBook(const std::string &username, const std::string &bookId);
 
     std::vector<OverdueRecord> calculateOverduePenalties(double dailyRate) const;
+    std::vector<Transaction> getUserHistory(const std::string &username) const;
 };

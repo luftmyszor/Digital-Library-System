@@ -143,3 +143,16 @@ std::vector<TransactionManager::OverdueRecord> TransactionManager::calculateOver
 
     return report;
 }
+
+std::vector<Transaction> TransactionManager::getUserHistory(const std::string &username) const
+{
+    std::vector<Transaction> history;
+    for (const auto &t : _transactions)
+    {
+        if (t.username == username)
+        {
+            history.push_back(t);
+        }
+    }
+    return history;
+}

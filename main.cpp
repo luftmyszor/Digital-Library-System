@@ -205,6 +205,31 @@ int main()
                 } else {
                     std::cout << "[!] Error: Book does not exist or is currently available to borrow right now.\n";
                 } });
+
+            readerMenu->addChild("Borrowing History", "View My Borrowing History", [&transactions, &activeUser]()
+                                 {
+                std::cout << "\n>>> Borrowing History for " << activeUser.username << "\n";
+                auto history = transactions.getUserHistory(activeUser.username);
+
+                if (history.empty()) {
+                    std::cout << "[!] No transaction history found.\n";
+                    return;
+                }
+
+                for (const auto &t : history) {
+                    std::string statusText = "UNKNOWN";
+                    if (t.status == TransStatus::BORROWED) statusText = "BORROWED";
+                    else if (t.status == TransStatus::RETURNED) statusText = "RETURNED";
+                    else if (t.status == TransStatus::RESERVED) statusText = "RESERVED";
+
+                    std::cout << "Txn: " << t.transactionId
+                              << " | Book: " << t.bookId
+                              << " | Status: " << statusText
+                              << " | BorrowedAt: " << t.borrowDate
+                              << " | DueAt: " << t.dueDate
+                              << " | ReturnedAt: " << t.returnDate
+                              << "\n";
+                } });
         }
         else if (activeUser.role == LIBRARIAN)
         {
