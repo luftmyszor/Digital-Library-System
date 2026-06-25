@@ -1,1 +1,3 @@
-P;B1782154426;Conan Destylator;Krzysztof Feret;Horror;0;A2
+P;B1782154426;Conan Destylator;Krzysztof Feret;Horror;1;A2
+D;B1782425211;Pan Tadeusz;Adam Mickiewicz;Roman;1;EBUP;150
+P;B1782425449;Nad Niemnem;Eliza Orzeszkowa;Roman;0;A1
